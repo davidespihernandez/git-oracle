@@ -1,0 +1,7 @@
+version: "2"
+services:
+  oracle-local:
+    container_name: gtt
+    image: store/oracle/database-enterprise:12.2.0.1
+    ports:
+      - "32769:1521"
