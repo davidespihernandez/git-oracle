@@ -15,6 +15,8 @@ Hay dos fases diferenciadas: configuración y desarrollo diario.
 Tenemos que instalar y configurar tanto Docker como Flyway en la máquina del desarrollador.
 
 ## Docker
+
+### Instalación
 Para desarrollar software es necesario que cada desarrollador tenga su propia base de datos Oracle funcionando en su máquina.
 Para esto, hay que instalar [Docker](https://www.docker.com/products/docker-desktop), que permite arrancar sistemas operativos virtuales, llamados contenedores, con software de todo tipo funcionando, como si de una máquina virtual se tratase. 
 
@@ -27,23 +29,23 @@ Una vez creada la cuenta, hay que:
 - Buscar la imagen oficial de Oracle Database. Entrar en el detalle y aceptar los términos del servicio (hay que registrarse)
 - Hacer login desde la línea de comandos con `$ docker login`
 - Ya se podría descargar el contenedor con la instrucción `docker pull store/oracle/database-enterprise:12.2.0.1`
-- Con este comando se puede levantar la instancia de Oracle: `$ docker run -d -it --name <Oracle-DB> -P store/oracle/database-enterprise:12.2.0.1`, donde <Oracle-DB> será el nombre del contenedor. 
-- Cuando se ejecute `docker ps` y para el contenedor el estado mostrado sea `(healthy)`, significará que Oracle ha arrancado correctamente.
-- El usuario y contraseña por defecto para conectarse a la base de datos es `sys` y `Oradoc_db1`. El SID es `ORCLCDB`.
 
-Existe una variante "slim" del contenedor, con nombre `store/oracle/database-enterprise:12.2.0.1-slim`, que ocupa menos espacio, y no dispone de características poco usadas como  Analytics, Oracle R, Oracle Label Security, Oracle Text, Oracle Application Express and Oracle DataVault. 
+Existe una variante "slim" del contenedor, con nombre `store/oracle/database-enterprise:12.2.0.1-slim`, que ocupa menos espacio, y no dispone de características poco usadas como Analytics, Oracle R, Oracle Label Security, Oracle Text, Oracle Application Express y Oracle DataVault. 
 
+### Arrancar la base de datos y conectarse a ella
 Para facilitar el arranque de la base de datos he creado un fichero `docker-compose.yml` que arranca la base de datos mediante el comando:
 
-`$ docker-compose up`
+`$ docker-compose up -d`
 
 Una vez el contenedor ha sido descargado (después del `pull`), se puede ejecutar directamente `docker-compose up` para arrancar oracle sin tener que hacer login de nuevo.
 
+La opción `-d` significa que se ejecute en background, si se omite esta opción Docker muestra en pantalla todo lo que va sucediendo, incluso información sobre lo que habría que añadir a un fichero `tnsnames.ora` en caso de que quisieramos crearlo.
+
+Para saber si la instancia de Oracle está lista, se puede ejecutar `docker ps` y cuando para el contenedor `oracle-local` el estado mostrado sea `(healthy)`, significará que Oracle ha arrancado correctamente.
+
 La configuración del `docker-compose.yml` une el puerto 1521 del contenedor al puerto local 32769. 
 Este puerto es el que tiene que usarse al configurar la conexión en un cliente SQL como DataGrip (o TOAD).
-
-Una vez se ejecuta este comando, la imagen de Oracle muestra en pantalla todo lo que va sucediendo, incluso información sobre lo que habría que añadir a un fichero `tnsnames.ora` en caso de que quisieramos crearlo.
-En todo caso, la conexión usando el SID, usuario y contraseña funciona (ver [imagen](conectar.png))
+En todo caso, la conexión usando el SID, usuario y contraseña funciona (ver [imagen](conectar.png)).
 
 Los datos de la base de datos se guardan en el interior del contenedor, por lo que si el contenedor se borra (esto no se tiene por qué hacer) los datos se perderían.
 Para un entorno de desarrollo esto no es muy importante, porque la base de datos se reconstruye usando los scripts de Flyway, pero si se quisiera mantener los datos en la máquina local, podría hacerse añadiendo `volumes` al fichero `docker-compose.yml`
@@ -54,6 +56,8 @@ volumes:
 ```
 
 Donde `/data/OracleDBData` es un directorio existente en la máquina local. Esto haría que los datos se guardaran fuera del contenedor, pudiendo recuperarlos en caso de borrado del mismo.
+
+El usuario y contraseña por defecto para conectarse a la base de datos es `sys` y `Oradoc_db1`. El SID es `ORCLCDB`.
 
 ## Crear esquema de base de datos
 
@@ -83,7 +87,8 @@ He creado un shell script que compila todos los paquetes (cabeceras primero, bod
 ./shell_scripts/compilar.sh
 ```
 
-El script une todas las cabeceras en un fichero, cambia el usuario de la sesión y los ejecuta en `sqlplus`. También hace lo mismo con los bodies de los PL.
+El script compila cada cabecera y body por separado en `sqlplus`. 
 En caso de tener triggers o clases, o cualquier otro código PL que compilar, puede añadirse en este mismo script.
+Al final se ejecuta un par de veces el paquete `UTL_RECOMP` para recompilar los paquetes con errores.
 
-En todo caso, hay clientes SQL como TOAD que permiten la compilación masiva de los ficheros PL/SQL. 
+En todo caso, hay clientes SQL como TOAD que permiten la compilación masiva de los ficheros PL/SQL, por lo que esto puede hacerse manualmente, pero un script siempre simplifica las cosas. 
