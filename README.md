@@ -59,7 +59,7 @@ Donde `/data/OracleDBData` es un directorio existente en la máquina local. Esto
 
 El usuario y contraseña por defecto para conectarse a la base de datos es `sys` y `Oradoc_db1`. El SID es `ORCLCDB`.
 
-## Crear esquema de base de datos
+### Crear esquema de base de datos
 
 La instancia de Oracle viene sin ningún esquema creado, además de los estándar. Para ello, necesitamos crear un esquema donde se crearán nuestras tablas y paquetes PL/SQL.
 
@@ -72,8 +72,98 @@ El script se ejecuta desde el shell (en Mac y Linux):
 $ ./shell_scripts/init.sh
 ```
 
-Antes tendrá que marcarse el fichero como ejecutable, con `chmod +x`.
 Para usuarios de Windows, la versión `.bat` debe ser sencilla de hacer...
+
+## Flyway
+
+[Flyway](https://flywaydb.org/) es una herramienta para el control de versiones en el modelo de datos. 
+Simplificando, no es más que un gestor de scripts SQL que establece una serie de normas de nombrado de ficheros y permite la ejecución de scripts SQL para actualizar una base de datos.
+
+Al trabajar con Flyway, los scripts de cambios en modelo de datos (DDL y DML) se guardan en el repositorio Git como ficheros de texto SQL con una nomenclatura definida.
+Flyway crea una tabla en la base de datos (`flyway_schema_history`) para almacenar qué scripts están ejecutados, y también guarda un hash de cada script. 
+Cuando un desarrollador actualiza o descarga una rama de Git, los scripts asociados a esos cambios están ahí, y Flyway sabe qué scripts están ejecutados y cuáles no, permitiendo actualizar la versión de la base de datos de forma que sea compatible con los cambios en el código.
+
+### Instalación
+Para instalar Flyway se tiene que descargar de [aquí](https://flywaydb.org/documentation/commandline/#download-and-installation) la versión de escritorio (command-line) de Flyway para tu sistema operativo.
+
+Una vez descomprimido el fichero descargado, es conveniente mover el directorio completo a la carpeta de aplicaciones o a algún sitio más "estable" que la carpeta de descargas. Es conveniente también añadir esta carpeta al PATH para permitir el acceso rápido al ejecutable de Flyway.
+
+Flyway necesita el driver JDBC para conectarse a la base de datos. Para otros motores como Postgres o MySQL el driver está incluido in la distribución de Flyway, pero para Oracle hay que descargar el driver (hay que asegurarse de que sea compatible con la versión de Oracle) y copiarlo en la carpeta `/drivers` de la instalación de Flyway. 
+El driver puede descargarse de la web de [Oracle](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/index.html)
+Hay instrucciones detalladas sobre el uso de Flyway con Oracle [aqui](https://flywaydb.org/documentation/database/oracle). Es importante recalcar que para versiones anteriores a Oracle 12.2 (la que usamos aquí) hay que usar una licencia de Flyway Pro.
+Hay que descargar los ficheros `ojdbc8.jar` y `orai18n.jar` de la web de Oracle y moverlos al directorio `drivers` de la instalación
+
+### Configuración
+En la carpeta de la instaiación de Flyway hay un subdirectorio llamado `conf` que contiene un fichero `flyway.conf` que puede editarse para indicar a Flyway cosas como la URL a la que acceder, usuario, contraseña, localización de los scripts SQL...
+La información de configuración que necesitamos indicar es:
+
+| Propiedad | Valor |
+| --------- | ----- |
+| url | jdbc:oracle:thin:@//localhost:32769/ORCLCDB.localdomain |
+| user | c##local |
+| password | localpass |
+| locations | filesystem:/ruta/completa/a/carpeta/SQL/migrations |
+
+En la carpeta `flyway` de este repositorio hay un fichero `flyway.conf` con la configuración local que he usado a modo de ejemplo.  
+Una propiedad interesante es `outOfOrder`, que nos permitirá ejecutar todas las migraciones anteriores no aplicadas, aunque hayamos aplicado migraciones posteriores en número de versión. Esto puede indicarse en cada ejecución concreta de Flyway.
+
+La documentación sobre las posibles opciones de configuración puede encontrarse [aquí](https://flywaydb.org/documentation/configfiles)
+
+Existe una opción de configuración llamada `initSql` para indicar instrucciones SQL que se ejecutarán antes de las migraciones, como por ejemplo un `ALTER SESSION`, si lo vemos conveniente o necesario.
+
+### Creación de la tabla de control de versiones
+Flyway usa una tabla (`flyway_schema_history`) para controlar qué scripts han sido ejecutados y cuáles no.
+El propio ejecutable de Flyway permite la creación de esta tabla ejecutando `flyway baseline`
+
+```bash
+Davids-MacBook-Pro:shell_scripts davidespihernandez$ flyway baseline
+Flyway Community Edition 5.2.4 by Boxfuse
+Database: jdbc:oracle:thin:@//localhost:32769/ORCLCDB.localdomain (Oracle 12.2)
+Creating Schema History table: "C##LOCAL"."flyway_schema_history"
+Successfully baselined schema with version: 1
+```
+
+Esto hay que hacerlo antes de poder ejecutar migraciones. 
+
+### Nomenclatura de los scripts
+Flyway sigue una nomenclatura concreta para los scripts SQL. Por ejemplo:
+
+`V2__Crear_tabla.sql`
+
+En este caso,
+- **V**: es el prefijo que indica que es un script a ejecutar, un script de nueva versión. Se puede crear scripts repetibles, que se ejecutan siempre, y comienzan por R, o scripts de deshacer que empiezan por U (sólo para versión pro de Flyway)
+- **2**: Es el número de versión.
+- **__**: El doble subrayado señala la separación con el campo de descripción.
+- **Crear_tabla.sql**: Descripción y extensión del fichero.
+
+En mi opinión, un buen ejemplo de nombrado de script debería usar como número de versión una fecha con hora minutos y segundos. Por ejemplo:
+
+`V201903112006__Creacion_tabla.sql`
+
+La fecha hasta minutos (o segundos si se quiere) hace que el número de versión sea prácticamente único.
+
+### Actualización del modelo de datos usando Flyway
+Una vez Flyway está configurado, para actualizar la base de datos con los scripts de migración se ejecuta `flyway migrate`. 
+Por ejemplo, en este repositorio hay un script de prueba, que crea una tabla en la base de datos, `V201903112012__Crear_tabla_ejemplo.sql`.
+Si ejecutamos `flyway migrate`, la salida es:
+
+```bash
+Davids-MacBook-Pro:shell_scripts davidespihernandez$ flyway migrate
+Flyway Community Edition 5.2.4 by Boxfuse
+Database: jdbc:oracle:thin:@//localhost:32769/ORCLCDB.localdomain (Oracle 12.2)
+Successfully validated 2 migrations (execution time 00:00.050s)
+Current version of schema "C##LOCAL": 1
+Migrating schema "C##LOCAL" to version 201903112012 - Crear tabla ejemplo
+Successfully applied 1 migration to schema "C##LOCAL" (execution time 00:00.049s)
+``` 
+
+Flyway ejecuta el script y crea la tabla. Además, inserta una fila en la tabla de versiones, con un hash para validar que el contenido del fichero no se cambie en el futuro (los scripts han de ser inmutables)
+
+### Normas para el SQL y PL/SQL en los scripts
+- Cualquier DDL exportado por Oracle debe poder ser ejecutado por Flyway sin modificaciones.
+- Las instrucciones SQL deben terminar en `;`
+- Los bloques de PL/SQL deben comenzar por `DECLARE` o `BEGIN` y terminar en `END; /` (la barra es importante)
+- Se permite también el uso de _placeholders_, que pueden definirse en el fichero de configuración y usarse en el SQL (ver documentación de FLyway para más información)
 
 # Desarrollo diario
 
