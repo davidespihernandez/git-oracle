@@ -269,9 +269,9 @@ Trabajar con PR tiene múltiples beneficios:
 ### 2.2.2 Estrategia de creación de ramas (_Branching strategy_) 
 No existe una estrategia de creación de ramas única en Git, depende habitualmente de las necesidades del proyecto en cuestión.
 
-Si el proyecto está pensado para realizar _continuous deployment (CD)_ o _continuous integration (CI)_ (esto es siempre lo deseable), lo mejor es usar una estrategia como [Github Flow](#2.2.1.1 Github flow).
+Si el proyecto está pensado para realizar _continuous deployment (CD)_ o _continuous integration (CI)_ (esto es siempre lo deseable), lo mejor es usar una estrategia como Github Flow.
 
-Por otra parte, si partimos de una estructura antigua y queremos migrar a Git, quizá sea más operativo usar inicialmente algo como [Gitflow](#2.2.1.2 Gitflow).
+Por otra parte, si partimos de una estructura antigua y queremos migrar a Git, quizá sea más operativo usar inicialmente algo como Gitflow.
 
 En todo caso, siempre puede crearse una estategia _ad hoc_ para cada proyecto.
 A continuación comentamos las principales estrategias para el uso de Git.
