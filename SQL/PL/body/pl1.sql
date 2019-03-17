@@ -5,6 +5,6 @@ create or replace package body pl1 is
   end funcion1;
   procedure procedure1(param1 varchar2) is
   begin
-    null;
+    dbms_output.put_line('Cambio');
   end procedure1;
 end pl1;
