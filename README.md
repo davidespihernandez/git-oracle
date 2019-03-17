@@ -359,3 +359,12 @@ Gráficamente es la más atractiva, en mi opinión. También es bastante sencill
 Hecha por los creadores de Sublime editor. Me parece la aplicación más completa, e incluye un par de características que la hacen mejor que las anteriores:
 - Búsqueda avanzada
 - Posibilidad de resolver _merge conflicts_ en la propia herramienta. Esto es MUY atractivo...
+
+## 2.3 Pasos para actualizar cambios
+Estos serían los pasos para actualizar los cambios que haya en `master`:
+
+- Pull `master`
+- Ejecutar `flyway migrate`
+- Ejecutar `shell_scripts/compilar.sh`. Quizá haya que compilar antes, dependiendo de si los scripts de migración hacen llamadas a PL/SQL modificados. 
+En ese caso, es conveniente separar los scripts de migración en 2 ficheros, uno con el DDL y DML sencillo (sólo SQL) y otro con los bloques de PL que usen paquetes.
+ 
