@@ -266,6 +266,9 @@ Trabajar con PR tiene múltiples beneficios:
 - Aunque un desarrollador no esté como revisor de un PR, siempre puede acceder al mismo, ver el código y hacer los comentarios que quiera. Añadir a un desarrollador como revisor de un PR puede significar simplemente que se quiere que esté al tanto de los cambios, no la revisión concreta de los mismos.
 - Las herramientas de integración continua como Jenkins permiten comprobar que para los cambios de ese PR todos los tests automáticos funcionan, y pueden deshabilitar la aprobación del PR en caso contrario.
 
+Los PR no son una característica que venga con Git, se manejan de forma externa por servicios como Github o Bitbucket (que hay que contratar por separado).
+Tanto Bitbucket como Github permiten integración de los PR con sistemas externos como Jira, de forma que cuando un PR se cierra (_merge_), el ticket asociado se puede cambiar de estado automáticamente.
+
 ### 2.2.2 Estrategia de creación de ramas (_Branching strategy_) 
 No existe una estrategia de creación de ramas única en Git, depende habitualmente de las necesidades del proyecto en cuestión.
 
@@ -318,6 +321,16 @@ Hay que notar que la máxima **todo lo que está en la rama `master` se puede de
 
 Hay una buena comparativa entre Gitflow y Github flow [aquí](https://lucamezzalira.com/2014/03/10/git-flow-vs-github-flow/).
 
+#### 2.2.2.3 Ramas por sprint/release
+Esta podría ser una variante simplificada de Gitflow, para compañías que trabajen con Agile, mediante _sprints_.
+
+- Al principio del sprint se crea una rama desde master, donde se desarrollará el sprint, y que acabará siendo una release.
+- Cada desarrollador crea su rama de _feature_ partiendo de la rama del sprint.
+- Los PR se crean para ser mezclados contra la rama del sprint.
+- La rama del sprint se despliega (preferiblemente de forma automática) en un entorno compartido, donde se pueden realizar pruebas y validaciones manuales más allá de los tests automáticos.
+- Si hay algún bug/hotfix, se trata como en Gitflow, se parte de master, y se mezcla contra master y también contra la rama actual de sprint.
+- Una vez el sprint está aceptado, se mezcla la rama del sprint contra master, y se despliega en producción.
+
 ### 2.2.3 Tests automáticos
 Independientemente de qué estrategia de creación de ramas se use, es fundamental en el desarrollo de software la creación de tests automáticos.
 
@@ -329,11 +342,20 @@ El propio desarrollador ha de comprobar en local que todos los tests pasan antes
 Las herramientas de integración continua, como Jenkins o Circle CI permiten impedir que se pueda aprobar PR para los que hay tests que fallan. 
 
 ### 2.2.4 Herramientas para Git
+Si se tiene la posibilidad de usar un IDE que integre Git, como las herramientas de Jetbrains (IntelliJ, Pycharm, Webstorm...), Sublime, o Visual Studio Code, esto es siempre una buena opción.
 
-#### 2.2.4.1 Línea de comandos
+Todo lo que se puede hacer con Git se puede hacer mediante la línea de comandos. [Aquí](https://git-scm.com/book/en/v2/Getting-Started-The-Command-Line) se puede encontrar la guía oficial de comandos.
 
-#### 2.2.4.2 Atlassian Sourcetree
+En todo caso, hay muchas herramientas específicas para trabajar visualmente con Git. Comentaremos algunas.
 
-#### 2.2.4.3 Github desktop
+#### 2.2.4.1 Atlassian Sourcetree
+Lo mejor de esta aplicación es que se integra con Bitbucket, permitiendo crear PR desde la misma (aunque lo que hace realmente es abrir la página web, donde se crea el PR)
+Es una aplicación bastante robusta y, una vez que se controla bien los cambios de ramas, se acostumbra uno a ella muy rápidamente.
 
-#### 2.2.4.4 Sublime merge
+#### 2.2.4.2 Github desktop
+Gráficamente es la más atractiva, en mi opinión. También es bastante sencilla de usar, e integra perfectamente con Github.
+
+#### 2.2.4.3 Sublime merge
+Hecha por los creadores de Sublime editor. Me parece la aplicación más completa, e incluye un par de características que la hacen mejor que las anteriores:
+- Búsqueda avanzada
+- Posibilidad de resolver _merge conflicts_ en la propia herramienta. Esto es MUY atractivo...
