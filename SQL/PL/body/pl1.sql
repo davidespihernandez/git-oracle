@@ -6,5 +6,6 @@ create or replace package body pl1 is
   procedure procedure1(param1 varchar2) is
   begin
     dbms_output.put_line('Cambio');
+    dbms_output.put_line('Otro Cambio');
   end procedure1;
 end pl1;
