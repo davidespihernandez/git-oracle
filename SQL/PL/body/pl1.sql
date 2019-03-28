@@ -7,5 +7,6 @@ create or replace package body pl1 is
   begin
     dbms_output.put_line('Cambio');
     dbms_output.put_line('Cambio 2');
+    dbms_output.put_line('Otro Cambio');
   end procedure1;
 end pl1;
