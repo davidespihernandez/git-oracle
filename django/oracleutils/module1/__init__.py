@@ -1,0 +1,5 @@
+TABLES = [
+    'CUSTOMER',
+    'INVOICE',
+    'INVOICE_LINE',
+]
