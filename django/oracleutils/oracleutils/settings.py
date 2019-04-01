@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'crearmodelos',
     'module1',
+    'module2',
 ]
 
 MIDDLEWARE_CLASSES = [

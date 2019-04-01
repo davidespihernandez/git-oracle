@@ -9,8 +9,7 @@ from django.db import models
 
 
 class House(models.Model):
-    house_id = models.BigIntegerField(primary_key=True)
-    thing = models.ForeignKey('Thing', models.DO_NOTHING, blank=True, null=True)
+    thing = models.ForeignKey('Thing', models.DO_NOTHING, primary_key=True)
     detail = models.CharField(max_length=4000)
 
     class Meta:
