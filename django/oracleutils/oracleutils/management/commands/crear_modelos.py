@@ -5,7 +5,7 @@ from django.core.management.commands.inspectdb import (
     Command as InspectDbCommand,
 )
 
-from crearmodelos import ALL_TABLES
+from comandos import ALL_TABLES
 
 
 class Command(BaseCommand):

@@ -1,12 +1,12 @@
 import factory
-from module2.models.person import Person
+from module1.models.customer import Customer
 from oracleutils.factories.base import BaseFactory
 
 
-class PersonFactory(BaseFactory):
+class CustomerFactory(BaseFactory):
     class Meta:
-        model = Person
+        model = Customer
         django_get_or_create = ('name', )
 
-    person_id = factory.Sequence(lambda n: -n)
+    customer_id = factory.Sequence(lambda n: -n)
     name = factory.Faker('name', locale='es_ES')

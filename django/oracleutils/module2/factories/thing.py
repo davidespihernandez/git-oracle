@@ -5,12 +5,12 @@ import factory
 from module2.factories.person import PersonFactory
 from module2.factories.thing_type import ThingTypeFactory
 from module2.models.thing import Thing
+from oracleutils.factories.base import BaseFactory
 
 
-class ThingFactory(factory.django.DjangoModelFactory):
+class ThingFactory(BaseFactory):
     class Meta:
         model = Thing
-        django_get_or_create = ('person', 'thing_type_code', )
 
     thing_id = factory.Sequence(lambda n: -n)
     person = factory.SubFactory(PersonFactory)

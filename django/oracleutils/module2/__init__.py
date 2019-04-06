@@ -5,3 +5,5 @@ TABLES = [
     'HOUSE',
     'CAR',
 ]
+
+default_app_config = 'module2.apps.Module2Config'
