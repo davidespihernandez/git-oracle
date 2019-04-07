@@ -1,11 +1,15 @@
 import logging
 
+from module1.models.customer import Customer
+from module1.models.invoice import Invoice
+from module1.models.invoice_line import InvoiceLine
 from module1.tests.builder import Builder
+from oracleutils.builder.base import BaseDataBuilder
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('oracleutils')
 
 
-class TestDataBuilder:
+class TestDataBuilder(BaseDataBuilder):
     builder = Builder()
 
     def build(self):
@@ -16,7 +20,15 @@ class TestDataBuilder:
         log.info("Building customers")
         self.builder.customer()
 
+    def clear(self):
+        log.info("Clearing data for module 1 ")
+        InvoiceLine.objects.all().delete()
+        Invoice.objects.all().delete()
+        Customer.objects.all().delete()
 
-def build_test_data():
+
+def build_test_data(clear=True):
     builder = TestDataBuilder()
+    if clear:
+        builder.clear()
     builder.build()

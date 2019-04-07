@@ -5,11 +5,11 @@ from django.core.management.commands.inspectdb import (
     Command as InspectDbCommand,
 )
 
-from comandos import ALL_TABLES
+from oracleutils import ALL_TABLES
 
 
 class Command(BaseCommand):
-    help = 'Crear modelos a partir de la base de datos Oracle, para este módulo'
+    help = 'Crear modelos a partir de la base de datos Oracle'
 
     def handle(self, *args, **options):
         for app, tables in ALL_TABLES.items():
