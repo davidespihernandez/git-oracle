@@ -15,4 +15,3 @@ class ThingFactory(BaseFactory):
     thing_id = factory.Sequence(lambda n: -n)
     person = factory.SubFactory(PersonFactory)
     date_created = factory.LazyFunction(datetime.now)
-    thing_type_code = factory.SubFactory(ThingTypeFactory)

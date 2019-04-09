@@ -85,6 +85,11 @@ DATABASES = {
         #     'use_returning_into': False,
         #     'threaded': True,
         # },
+        'TEST': {
+            'USER': 'C##TESTS',
+            'TBLSPACE': 'C##TESTS_TBL',
+            'TBLSPACE_TMP': 'C##TESTS_TBL_TMP',
+        }
     },
 }
 
