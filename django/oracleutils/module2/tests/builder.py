@@ -1,31 +1,29 @@
+import functools
 import logging
 from module2.factories.car import CarFactory
 from module2.factories.house import HouseFactory
 from module2.factories.person import PersonFactory
 from module2.factories.thing import ThingFactory
-from module2.models.thing_type import ThingType
+from module2.factories.thing_type import ThingTypeFactory
+from module2.tests.master_tables import MasterTables
 
 log = logging.getLogger('oracleutils')
 
 
 class Builder:
-
-    def __init__(self):
-        self.thing_types_props = {
-            'CAR': {'name': 'Car'},
-            'HOU': {'name': 'House'},
-        }
+    @functools.lru_cache(maxsize=128)
+    def get_thing_type(self, thing_type_code):
+        data = MasterTables.THING_TYPE[thing_type_code]
+        if data:
+            return ThingTypeFactory(**data)
+        return None
 
     def person(self, **kwargs):
         return PersonFactory(**kwargs)
 
     def thing(self, person=None, thing_type='CAR'):
         log.info(f"Building thing {thing_type}")
-        # hacer función cacheada para esto
-        thing_type_object = ThingType.objects.get_or_create(
-            thing_type_code=thing_type,
-            name=self.thing_types_props[thing_type]['name'],
-        )[0]
+        thing_type_object = self.get_thing_type(thing_type)
         thing = ThingFactory(
             person=person or self.person(),
             thing_type_code=thing_type_object,
