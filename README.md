@@ -2,13 +2,22 @@
 
 El objetivo de este repositorio es mostrar cómo se puede trabajar con Git en una aplicación basada en Oracle (con lógica en PL/SQL)
 
+Además crearemos una aplicación en Django para facilitar la creación de datos de prueba en la instancia local del desarrollador,
+y permitiremos la ejecución de pruebas automáticas (también en Django) sobre el código PL existente.
+
 Las tecnologías que usaremos para conseguir este objetivo son:
 
 - Docker. Para arrancar Oracle en la máquina local.
 - Flyway. Para mantener las _database migrations_, los scripts SQL que realizan la evolución del modelo de datos.
 - Shell scripts para compilar el código PL/SQL en la instancia.
+- Django Framework, usando librerías como Factory Boy para la inserción de datos.
 
-Hay dos fases diferenciadas: configuración y desarrollo diario.
+Estructuraremos esta documentación en cuatro fases diferenciadas:
+
+1. Instalación y configuración de Docker y Flyway.
+2. Desarrollo diario: uso de Git y Flyway.
+3. Generación de datos de prueba.
+4. Ejecución de pruebas automáticas.
 
 # 1. Configuración
 
@@ -368,3 +377,96 @@ Estos serían los pasos para actualizar los cambios que haya en `master`:
 - Ejecutar `shell_scripts/compilar.sh`. Quizá haya que compilar antes, dependiendo de si los scripts de migración hacen llamadas a PL/SQL modificados. 
 En ese caso, es conveniente separar los scripts de migración en 2 ficheros, uno con el DDL y DML sencillo (sólo SQL) y otro con los bloques de PL que usen paquetes.
  
+# 3. Generación de datos de prueba
+Una vez que mantenemos el esquema de base de datos mediante Flyway, el desarrollador tiene una base de datos "en blanco",
+creada por los scripts DDL de las migraciones manejadas por Flyway (aunque Flyway ejecuta cualquier tipo de script, no sólo DDL)
+
+Es conveniente que el desarrollador pueda generar de forma automática una serie de datos de prueba que le permitan usar la aplicación localmente para operar con ella.
+
+Para esto, se podría escribir una serie de scripts SQL que se ejecutarían cada vez después de ejecutar las migraciones de Flyway, y que insertarían los datos necesarios.
+Esta estrategia es muy complicada de mantener, y es muy fácil cometer errores en este tipo de scripts, por lo que hemos optado por crear una aplicación en Django y usar su ORM y algunas librerías de terceros para hacerlo.
+
+## 3.1 Instalación de Django
+[Django](https://www.djangoproject.com/) es un framework de desarrollo de aplicaciones gratuito y de código abierto basado en Python.
+
+Django lleva muchos años en el mercado y hay muchas grandes empresas y aplicaciones que lo usan.
+Todo lo que necesites hacer ya está hecho o puede hacerse fácilmente con Django.
+
+Usaremos Python 3.6 y Django 2.2.
+
+La documentación sobre instalación de la guía oficial puede encontrarse [aquí](https://docs.djangoproject.com/en/2.2/intro/install/).
+
+Es conveniente hacer algún tutorial sobre Django, o leer documentación, para entender lo que estamos haciendo.
+
+Hay un muy buen tutorial en español en [Django girls](https://tutorial.djangogirls.org/es), que incluye también la instalación.
+
+La página oficial tiene una documentación de gran calidad. En concreto, es interesante empaparse del [ORM](https://docs.djangoproject.com/en/2.2/topics/db/) de Django.
+
+La idea general es que el ORM de Django permite usar clases en Python (llamadas modelos) para acceder a la base de datos, sin tener que escribir SQL.
+Django, además, tiene herramientas que facilitarán mucho esta tarea.
+
+Hay que crear un `virtual environment` e instalar los requerimientos del proyecto en él. Hay un script `crear_venv.sh` que realiza esto (aunque se puede hacer manualmente).
+Para simplificar cosas es importante que el environment se llame `oracleutils`.
+
+## 3.2 Aplicaciones Django
+Un `site` Django habitualmente consta de varias `aplicaciones`.
+En nuesto caso hemos creado una aplicación _central_ llamada `oracleutils`, y crearemos una aplicación por módulo en la base de datos.
+En el repositorio encontramos un directorio para `module1` y `module2`. Cada uno de estos directorios es una aplicación Django.
+
+## 3.3 Generación automática de modelos de Django
+
+Django viene con una serie de [comandos](https://docs.djangoproject.com/en/2.2/ref/django-admin/) de administación "de serie" que permiten hacer múltiples cosas.
+Entre ellos está el comando `inspectdb`. La sintaxis de este comando es:
+
+```
+django-admin inspectdb [table [table ...]]¶
+```
+
+El comando usa la conexión de base de datos especificada en las `settings` y escribe en la salida estándar una clase Python para cada una de las tablas que se le indiquen.
+Se usa este comando cuando se quiere usar Django contra una base de datos existente (como es el caso).
+El comando vuelca todas las clases, que se suelen pegar en un fichero `models.py` (en Python es habitual tener más de una clase en un fichero).
+
+En nuestro caso hemos optado por crear un comando que genera un fichero por cada tabla, y además los almacena en un directorio `models` dentro de cada aplicación.
+
+Este comando se llama `crear_datos_prueba`, y el código está en la aplicación `oracleutils`. En esta aplicación, en el fichero `__init.py` se observa:
+
+```
+from module1 import TABLES as MODULE1_TABLES
+from module2 import TABLES as MODULE2_TABLES
+
+ALL_TABLES = {
+    'module1': MODULE1_TABLES,
+    'module2': MODULE2_TABLES,
+}
+```
+
+La variable `ALL_TABLES` debe contener un diccionario con una entrada por aplicación. En cada entrada están la tablas de las que consta ese módulo.
+Por ejemplo, en el `__init__.py` de `module1` se observa:
+
+```
+TABLES = [
+    'CUSTOMER',
+    'INVOICE',
+    'INVOICE_LINE',
+]
+```
+Esa es la lista de tablas del `module1`. Cuando se ejecute el comando `crear_modelos` (bien directamente con `manage.py`,
+o bien con el script `crear_modelos.sh`) se creará un fichero `.py` en el directorio `models` de la aplicación `module1` por cada tabla.
+
+Esos modelos no son gestionados por Django, lo que significa que las Django migrations no les afectan, pero sí puede usarse el ORM para acceder a las tablas, y eso es lo que haremos.
+
+## 3.4 Generación automática de datos de prueba usando Factory Boy
+[Factory Boy)[https://factoryboy.readthedocs.io/en/latest/] es una librería Python que se integra con el ORM de Django para permitir generar datos (principalmente para tests) de forma sencilla.
+
+Hemos creado un comando, `crear_datos_prueba`, que puede ejecutarse mediante un script `crear_datos_prueba.sh` que elimina opcionalmente
+toda la información de las tablas de cada aplicación y posteriormente inserta datos de prueba en las mismas.
+
+Para ello se define una clase `TestDataBuilder` por módulo. Esta clase tiene un método `build` y otro `clear`, que se ejecutan convenientemente por el comando.
+
+El método `build` usa un `builder`, que a su vez usa `Factories` creadas a partir de los modelos generados automáticamente con `inspectdb`, y que se encuentran en un directorio `factories` dentro de cada aplicación (módulo).
+
+TODO: Explicar y ejemplos de secuencia, nombre, uno a muchos...
+
+# 4. Ejecución de pruebas automáticas
+
+TODO: hacer...
