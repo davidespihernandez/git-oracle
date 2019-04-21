@@ -14,7 +14,7 @@ CREATE OR REPLACE PROCEDURE export_data_to_python(p_table_name varchar2) IS
     from ALL_TAB_COLUMNS c
     where c.table_name=p_table_name
     order by c.column_name;
-    l_sql := 'DECLARE python varchar2(32000) := ''' || upper(p_table_name) || '={''; ' ||
+    l_sql := 'DECLARE python varchar2(32000) := ''' || upper(p_table_name) || '={'' || chr(10); ' ||
              'k varchar2(32000); v varchar2(32000); ' ||
              'BEGIN FOR r IN (SELECT * FROM '||p_table_name|| ') LOOP ';
 
@@ -29,10 +29,10 @@ CREATE OR REPLACE PROCEDURE export_data_to_python(p_table_name varchar2) IS
         l_sql := l_sql || ' v := v || ''"' || lower(all_fields(i)) || '": "'' || r.' || all_fields(i) || ' || ''", '';';
     end loop;
     --TODO
-    l_sql := l_sql || 'python := python || ''"'' || k || ''": { '' || v || ''},''; ';
+    l_sql := l_sql || 'python := python|| chr(9) || ''"'' || k || ''": { '' || v || ''}, '' || chr(10); ';
 
     l_sql := l_sql || '   END LOOP; '
-             || 'python := python || '' }'';'
+             || 'python := python || chr(10) || '' }'';'
              || ' dbms_output.put_line(python); ' ||
              ' END; ';
     EXECUTE IMMEDIATE l_sql;
