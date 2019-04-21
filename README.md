@@ -128,13 +128,12 @@ Para instalar Flyway se tiene que descargar de [aquí](https://flywaydb.org/docu
 
 Una vez descomprimido el fichero descargado, es conveniente mover el directorio completo a la carpeta de aplicaciones o a algún sitio más "estable" que la carpeta de descargas. Es conveniente también añadir esta carpeta al PATH para permitir el acceso rápido al ejecutable de Flyway.
 
-Flyway necesita el driver JDBC para conectarse a la base de datos. Para otros motores como Postgres o MySQL el driver está incluido in la distribución de Flyway, pero para Oracle hay que descargar el driver (hay que asegurarse de que sea compatible con la versión de Oracle) y copiarlo en la carpeta `/drivers` de la instalación de Flyway. 
+Flyway necesita el driver JDBC para conectarse a la base de datos. Para otros motores como Postgres o MySQL el driver está incluido en la distribución de Flyway, pero para Oracle hay que descargar el driver, ficheros `ojdbc8.jar` y `orai18n.jar`, (hay que asegurarse de que sea compatible con la versión de Oracle) y copiarlo en la carpeta `/drivers` de la instalación de Flyway. 
 El driver puede descargarse de la web de [Oracle](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/index.html)
 Hay instrucciones detalladas sobre el uso de Flyway con Oracle [aqui](https://flywaydb.org/documentation/database/oracle). Es importante recalcar que para versiones anteriores a Oracle 12.2 (la que usamos aquí) hay que usar una licencia de Flyway Pro.
-Hay que descargar los ficheros `ojdbc8.jar` y `orai18n.jar` de la web de Oracle y moverlos al directorio `drivers` de la instalación
 
 ### 1.2.2 Configuración
-En la carpeta de la instaiación de Flyway hay un subdirectorio llamado `conf` que contiene un fichero `flyway.conf` que puede editarse para indicar a Flyway cosas como la URL a la que acceder, usuario, contraseña, localización de los scripts SQL...
+En la carpeta de la instalación de Flyway hay un subdirectorio llamado `conf` que contiene un fichero `flyway.conf` que puede editarse para indicar a Flyway cosas como la URL a la que acceder, usuario, contraseña, localización de los scripts SQL...
 La información de configuración que necesitamos indicar es:
 
 | Propiedad | Valor |
@@ -142,9 +141,10 @@ La información de configuración que necesitamos indicar es:
 | url | jdbc:oracle:thin:@//localhost:32769/ORCLCDB.localdomain |
 | user | c##local |
 | password | localpass |
-| locations | filesystem:/ruta/completa/a/carpeta/SQL/migrations |
+| locations | filesystem:../SQL/migrations |
 
-En la carpeta `flyway` de este repositorio hay un fichero `flyway.conf` con la configuración local que he usado a modo de ejemplo.  
+En la carpeta `flyway` de este repositorio hay un fichero `flyway.conf` con la configuración local que he usado a modo de ejemplo. Este fichero debe pegarse en el directorio `conf` de la instalación local de Flyway, para que se use esa configuración siempre. Si no se modifica esa configuración, debe ejecutarse el comando flyway desde la carpeta `flyway` del repositorio para que lea nuestro fichero `.conf`.
+
 Una propiedad interesante es `outOfOrder`, que nos permitirá ejecutar todas las migraciones anteriores no aplicadas, aunque hayamos aplicado migraciones posteriores en número de versión. Esto puede indicarse en cada ejecución concreta de Flyway.
 
 La documentación sobre las posibles opciones de configuración puede encontrarse [aquí](https://flywaydb.org/documentation/configfiles)
@@ -156,7 +156,7 @@ Flyway usa una tabla (`flyway_schema_history`) para controlar qué scripts han s
 El propio ejecutable de Flyway permite la creación de esta tabla ejecutando `flyway baseline`
 
 ```bash
-Davids-MacBook-Pro:shell_scripts davidespihernandez$ flyway baseline
+$ flyway baseline
 Flyway Community Edition 5.2.4 by Boxfuse
 Database: jdbc:oracle:thin:@//localhost:32769/ORCLCDB.localdomain (Oracle 12.2)
 Creating Schema History table: "C##LOCAL"."flyway_schema_history"
@@ -188,7 +188,7 @@ Por ejemplo, en este repositorio hay un script de prueba, que crea una tabla en 
 Si ejecutamos `flyway migrate`, la salida es:
 
 ```bash
-Davids-MacBook-Pro:shell_scripts davidespihernandez$ flyway migrate
+$ flyway migrate
 Flyway Community Edition 5.2.4 by Boxfuse
 Database: jdbc:oracle:thin:@//localhost:32769/ORCLCDB.localdomain (Oracle 12.2)
 Successfully validated 2 migrations (execution time 00:00.050s)
@@ -206,6 +206,7 @@ Flyway ejecuta el script y crea la tabla. Además, inserta una fila en la tabla 
 - Se permite también el uso de _placeholders_, que pueden definirse en el fichero de configuración y usarse en el SQL (ver documentación de FLyway para más información)
 
 ### 1.2.7 Comandos más habituales
+Los comandos tienen que ejecutarse desde la carpeta `flyway` para que lean la configuración adecuadamente, o bien sobreescribir el fichero `flyway.conf` de la instalación local de Flyway con el de este repositorio (eso es lo conveniente).
 
 #### 1.2.7.1 Limpiar la base de datos
 
@@ -215,7 +216,9 @@ $ flyway clean
 
 Este comando **BORRA** todos los objetos de los esquemas que maneja Flyway (uno solo en nuestro caso)
 
-Normalmente no es necesario, pero a veces viene bien recrear la base de datos de cero y aplicar todas las migraciones posteriormente. 
+Normalmente no es necesario, pero a veces viene bien recrear la base de datos de cero y aplicar todas las migraciones posteriormente.
+
+He creado un script sh para ejecutar el borrado e inicialización de la base de datos, ejecutando `flyway clean`y `flyway baseline`. El script se llama `bd_borrar.sh`. 
 
 #### 1.2.7.2 Estado de las migraciones
 
@@ -245,6 +248,8 @@ $ flyway migrate
 Aplica todas las migraciones no aplicadas. Es lo habitual cuando se cambia de rama.
 En ocasiones, cuando hay ramas que tardan mucho tiempo en volver a mezclarse contra master, nos encontraremos con scripts de migración no ejecutados con número de versión anterior a la última versión que ya tenemos aplicada.
 En ese caso Flyway, por defecto, da un error, que se puede evitar ejecutando `flyway migrate -outOfOrder=true`. 
+
+He creado un script sh que ejecuta `flyway migrate`, que se llama `bd_migrar.sh`. 
 
 # 2. Uso diario
 
@@ -343,7 +348,7 @@ Esta podría ser una variante simplificada de Gitflow, para compañías que trab
 ### 2.2.3 Tests automáticos
 Independientemente de qué estrategia de creación de ramas se use, es fundamental en el desarrollo de software la creación de tests automáticos.
 
-Cuando el desarrollador hace los cambios en el código en su rama, junto a esos cambios puede haber asociados unos scripts de migración de base de datos (aplicables con Flyway, siempre que haya cambios en el modelo de datos), pero es **oblbigatorio*** que haya unos tests automáticos que validen que los cambios realizados son correctos.
+Cuando el desarrollador hace los cambios en el código en su rama, junto a esos cambios puede haber asociados unos scripts de migración de base de datos (aplicables con Flyway, siempre que haya cambios en el modelo de datos), pero es **obligatorio** que haya unos tests automáticos que validen que los cambios realizados son correctos.
 Puede que se trate de nuevos tests, o puede que seam modificaciones de los existentes, pero se debe validar automáticamente que los cambios son correctos.
 
 El propio desarrollador ha de comprobar en local que todos los tests pasan antes de crear el PR.
@@ -373,7 +378,7 @@ Hecha por los creadores de Sublime editor. Me parece la aplicación más complet
 Estos serían los pasos para actualizar los cambios que haya en `master`:
 
 - Pull `master`
-- Ejecutar `flyway migrate`
+- Ejecutar `flyway migrate` o `bd_migrar.sh`
 - Ejecutar `shell_scripts/compilar.sh`. Quizá haya que compilar antes, dependiendo de si los scripts de migración hacen llamadas a PL/SQL modificados. 
 En ese caso, es conveniente separar los scripts de migración en 2 ficheros, uno con el DDL y DML sencillo (sólo SQL) y otro con los bloques de PL que usen paquetes.
  
@@ -384,7 +389,7 @@ creada por los scripts DDL de las migraciones manejadas por Flyway (aunque Flywa
 Es conveniente que el desarrollador pueda generar de forma automática una serie de datos de prueba que le permitan usar la aplicación localmente para operar con ella.
 
 Para esto, se podría escribir una serie de scripts SQL que se ejecutarían cada vez después de ejecutar las migraciones de Flyway, y que insertarían los datos necesarios.
-Esta estrategia es muy complicada de mantener, y es muy fácil cometer errores en este tipo de scripts, por lo que hemos optado por crear una aplicación en Django y usar su ORM y algunas librerías de terceros para hacerlo.
+Esta estrategia es muy complicada de mantener, y es muy fácil cometer errores en este tipo de scripts, por lo que he optado por crear una aplicación en Django y usar su ORM y algunas librerías de terceros para hacerlo.
 
 ## 3.1 Instalación de Django
 [Django](https://www.djangoproject.com/) es un framework de desarrollo de aplicaciones gratuito y de código abierto basado en Python.
@@ -400,7 +405,7 @@ Es conveniente hacer algún tutorial sobre Django, o leer documentación, para e
 
 Hay un muy buen tutorial en español en [Django girls](https://tutorial.djangogirls.org/es), que incluye también la instalación.
 
-La página oficial tiene una documentación de gran calidad. En concreto, es interesante empaparse del [ORM](https://docs.djangoproject.com/en/2.2/topics/db/) de Django.
+La página oficial tiene una documentación de gran calidad. En concreto, es muy conveniente leerse el [ORM](https://docs.djangoproject.com/en/2.2/topics/db/) de Django.
 
 La idea general es que el ORM de Django permite usar clases en Python (llamadas modelos) para acceder a la base de datos, sin tener que escribir SQL.
 Django, además, tiene herramientas que facilitarán mucho esta tarea.
@@ -411,7 +416,19 @@ Para simplificar cosas es importante que el environment se llame `oracleutils`.
 ## 3.2 Aplicaciones Django
 Un `site` Django habitualmente consta de varias `aplicaciones`.
 En nuesto caso hemos creado una aplicación _central_ llamada `oracleutils`, y crearemos una aplicación por módulo en la base de datos.
-En el repositorio encontramos un directorio para `module1` y `module2`. Cada uno de estos directorios es una aplicación Django.
+En el repositorio encontramos un directorio para `module1` y `module2`. Cada uno de estos directorios es una aplicación Django, y correspondería con un módulo de la aplicación monolítica.
+Las `settings` están en la aplicación central, `oracleutils`, en el fichero `settings.py`. En este fichero destaca la configuración de la conexión de la base de datos, que es:
+
+```
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.oracle',
+        'NAME': 'localhost:32769/ORCLCDB.localdomain',
+        'USER': 'C##LOCAL',
+        'PASSWORD': 'localpass',
+    },
+}
+```
 
 ## 3.3 Generación automática de modelos de Django
 
@@ -419,7 +436,7 @@ Django viene con una serie de [comandos](https://docs.djangoproject.com/en/2.2/r
 Entre ellos está el comando `inspectdb`. La sintaxis de este comando es:
 
 ```
-django-admin inspectdb [table [table ...]]¶
+django-admin inspectdb [table [table ...]]
 ```
 
 El comando usa la conexión de base de datos especificada en las `settings` y escribe en la salida estándar una clase Python para cada una de las tablas que se le indiquen.
@@ -458,15 +475,109 @@ Esos modelos no son gestionados por Django, lo que significa que las Django migr
 ## 3.4 Generación automática de datos de prueba usando Factory Boy
 [Factory Boy)[https://factoryboy.readthedocs.io/en/latest/] es una librería Python que se integra con el ORM de Django para permitir generar datos (principalmente para tests) de forma sencilla.
 
-Hemos creado un comando, `crear_datos_prueba`, que puede ejecutarse mediante un script `crear_datos_prueba.sh` que elimina opcionalmente
-toda la información de las tablas de cada aplicación y posteriormente inserta datos de prueba en las mismas.
+Hemos creado un comando, `crear_datos_prueba`, que puede ejecutarse mediante un script `crear_datos_prueba.sh` que elimina opcionalmente toda la información de las tablas de cada aplicación y posteriormente inserta datos de prueba en las mismas.
 
-Para ello se define una clase `TestDataBuilder` por módulo. Esta clase tiene un método `build` y otro `clear`, que se ejecutan convenientemente por el comando.
+Para ello se define una clase `TestDataBuilder` por módulo. Esta clase extiende una case base `BaseDataBuilder`. que define un método `build` y otro `clear`, que se ejecutan convenientemente por el comando.
+
+```
+class BaseDataBuilder:
+    def build(self):
+        raise NotImplemented
+
+    def clear(self):
+        raise NotImplemented
+
+    class Meta:
+        abstract = True
+```
+
+Cada aplicación (módulo) debe definir su `TestDataBuilder`, implementando esos métodos. El método `build` del `TestDataBuilder` de cada aplicación se llamará por el comando de generación de datos de test.
 
 El método `build` usa un `builder`, que a su vez usa `Factories` creadas a partir de los modelos generados automáticamente con `inspectdb`, y que se encuentran en un directorio `factories` dentro de cada aplicación (módulo).
 
-TODO: Explicar y ejemplos de secuencia, nombre, uno a muchos...
+### 3.4.1 Secuencias
+En Oracle es habitual usar secuencias para las claves primarias de las tablas. Las secuencias de Oracle habitualmente son números positivos. Para que no colisionen los datos de prueba generados automáticamente con lo que pueda generarse desde la aplicación en su funcionamiento normal, he decidido que los campos secuenciales generados por las factories serán enteros negativos. Para hacer esto, se define una factoría base en la aplicación central:
+
+```
+class BaseFactory(factory.django.DjangoModelFactory):
+    @classmethod
+    def _setup_next_sequence(cls):
+        return cls._meta.model.objects.count() + 1
+```
+El número de secuencia se calcula contando el número de filas existentes en la tabla, y sumando uno.
+Posteriormente, cuando se quiere asignar un número de secuencia en una factoría de factory boy, se hace lo siguiente:
+
+```
+class PersonFactory(BaseFactory):
+    class Meta:
+        model = Person
+        django_get_or_create = ('name', )
+
+    person_id = factory.Sequence(lambda n: -n)
+    name = factory.Faker('name', locale='es_ES')
+```
+
+El número de secuencia calculado (el número total más uno), se devuelve en negativo. Esto hace que la primera fila generada tenga un -1, la segunda un -2 y así sucesivamente.
+
+### 3.4.2 Faker
+Factory boy facilita la generación de datos aleatorios por defecto. Por ejemplo, para el nombre en la clase `PersonFactory` usamos:
+
+```
+    name = factory.Faker('name', locale='es_ES')
+```
+
+Esto nos genera (siempre que no se indique un `name` en la llamada) un nombre aleatorio, usando el la localización española (los nombres y apellidos serán más o menos nombres españoles)
+
+### Uso del Builder
+Este es um ejemplo de uso del builder para la generación de datos de prueba para un módulo:
+
+```
+class TestDataBuilder(BaseDataBuilder):
+    builder = Builder()
+
+    @transaction.atomic()
+    def build(self):
+        log.info("Building test data for module 2")
+        self.build_people()
+        self.build_things()
+
+    def build_people(self):
+        log.info("Building people")
+        self.person_no_things = self.builder.person(name='No things')
+        self.person_car = self.builder.person(name='Car')
+        self.person_house = self.builder.person(name='House')
+        self.person_both = self.builder.person(name='Both')
+
+    def build_things(self):
+        log.info("Building things")
+        self.builder.car(person=self.person_car, detail='Car Make')
+        log.info("Building things 1")
+        self.builder.house(person=self.person_house, detail='House address')
+        log.info("Building things 2")
+        self.builder.car(person=self.person_both, detail='Car Make')
+        log.info("Building things 3")
+        self.builder.house(person=self.person_both, detail='House address')
+
+    @transaction.atomic()
+    def clear(self):
+        log.info("Clearing data for module 2 ")
+        Car.objects.all().delete()
+        House.objects.all().delete()
+        Thing.objects.all().delete()
+        Person.objects.all().delete()
+        ThingType.objects.all().delete()
+
+
+def build_test_data(clear=True):
+    builder = TestDataBuilder()
+    if clear:
+        builder.clear()
+    builder.build()
+```
+
+El método `build_test_data` es el que se ejecuta para generar los datos de cada aplicación.
+En el `Builder` se definen los métodos para crear filas en todas las tablas, usando las factories de factory boy. Para cada modelo debe definirse una factory (manualmente), y el `Builder` usa esas factories para generar datos más elaborados.
 
 # 4. Ejecución de pruebas automáticas
 
-TODO: hacer...
+TODO

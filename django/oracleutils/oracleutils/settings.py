@@ -81,15 +81,6 @@ DATABASES = {
         'NAME': 'localhost:32769/ORCLCDB.localdomain',
         'USER': 'C##LOCAL',
         'PASSWORD': 'localpass',
-        # 'OPTIONS': {
-        #     'use_returning_into': False,
-        #     'threaded': True,
-        # },
-        'TEST': {
-            'USER': 'C##TESTS',
-            'TBLSPACE': 'C##TESTS_TBL',
-            'TBLSPACE_TMP': 'C##TESTS_TBL_TMP',
-        }
     },
 }
 
