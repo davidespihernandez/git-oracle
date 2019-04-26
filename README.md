@@ -413,6 +413,17 @@ Django, además, tiene herramientas que facilitarán mucho esta tarea.
 Hay que crear un `virtual environment` e instalar los requerimientos del proyecto en él. Hay un script `crear_venv.sh` que realiza esto (aunque se puede hacer manualmente).
 Para simplificar cosas es importante que el environment se llame `oracleutils`.
 
+Para que Django funcione adecuadamente con Oracle, hay que instalar, además los drivers de cliente de Oracle. En caso de mac OS, pueden encontrarse instrucciones [aquí](https://oracle.github.io/odpi/doc/installation.html#macos). Hay que bajar los drivers para la versión 12.2.0.1.0.
+
+En resumen, una vez descargado el fichero zip, hay que hacer:
+
+```
+mkdir -p /opt/oracle
+unzip instantclient-basic-macos.x64-12.2.0.1.0.zip
+mkdir ~/lib
+ln -s /opt/oracle/instantclient_12_2/libclntsh.dylib ~/lib/
+```
+
 ## 3.2 Aplicaciones Django
 Un `site` Django habitualmente consta de varias `aplicaciones`.
 En nuesto caso hemos creado una aplicación _central_ llamada `oracleutils`, y crearemos una aplicación por módulo en la base de datos.
@@ -528,7 +539,7 @@ Factory boy facilita la generación de datos aleatorios por defecto. Por ejemplo
 
 Esto nos genera (siempre que no se indique un `name` en la llamada) un nombre aleatorio, usando el la localización española (los nombres y apellidos serán más o menos nombres españoles)
 
-### Uso del Builder
+### 3.4.3 Uso del Builder
 Este es um ejemplo de uso del builder para la generación de datos de prueba para un módulo:
 
 ```
@@ -577,6 +588,101 @@ def build_test_data(clear=True):
 
 El método `build_test_data` es el que se ejecuta para generar los datos de cada aplicación.
 En el `Builder` se definen los métodos para crear filas en todas las tablas, usando las factories de factory boy. Para cada modelo debe definirse una factory (manualmente), y el `Builder` usa esas factories para generar datos más elaborados.
+
+### 3.4.4 Tablas maestras
+Hay determinadas tablas que contendrán información más o menos fija, que será usada por otras tablas. Estas tablas se llaman habitualmente tablas de códigos o tablas maestras.
+
+En el ejemplo, en el `module2`, tenemos una tabla de este tipo, llamada `THING_TYPE`. Es interesante que estas tablas tengan insertados los datos por defecto para nuestro entorno de pruebas. Para esto, hemos creado una clase llamada `MasterTables` donde se concentrará toda la información de las tablas maestras. Por ejemplo, en nuestra `MasterTables` definimos:
+
+```
+class MasterTables:
+    THING_TYPE = {
+        'CAR': {'thing_type_code': 'CAR', 'name': 'Car'},
+        'HOU': {'thing_type_code': 'HOU', 'name': 'House'},
+    }
+```
+
+La clase tendrá un objeto Python por cada master table. En cada `key` tendrá el código, y en el `value` tendrá otro objeto con los campos de la tabla y sus valores por defecto.
+
+A la hora de recuperar una fila de la tabla, haremos:
+
+```
+    @functools.lru_cache(maxsize=128)
+    def get_thing_type(self, thing_type_code):
+        data = MasterTables.THING_TYPE[thing_type_code]
+        if data:
+            return ThingTypeFactory(**data)
+        return None
+
+    def thing(self, person=None, thing_type='CAR'):
+        log.info(f"Building thing {thing_type}")
+        thing_type_object = self.get_thing_type(thing_type)
+        ...
+```
+
+`lru_cache` hace que la primera vez que se ejecuta la función se cree la fila usando la factory, y en posteriores llamadas para el mismo código se devuelve el objeto creado, sin accesos adicionales a la base de datos.
+
+He creado un procedimiento PL/SQL que, ejecutado en un entorno de producción, genera el código Python para una tabla maestra, de forma que sea sencillo volcar la información de una tabla a la clase `MasterTables`.
+
+```
+CREATE OR REPLACE PROCEDURE export_data_to_python(p_table_name varchar2) IS
+    l_sql VARCHAR2(4000);
+    type t_fields is table of varchar2(255) index by binary_integer;
+    pk_fields t_fields;
+    all_fields t_fields;
+  BEGIN
+    select cc.column_name
+    bulk collect into pk_fields
+    from ALL_CONSTRAINTS c, ALL_CONS_COLUMNS cc
+    where c.table_name=p_table_name and constraint_type='P' and cc.constraint_name=c.constraint_name
+    order by cc.column_name;
+    select c.column_name
+    bulk collect into all_fields
+    from ALL_TAB_COLUMNS c
+    where c.table_name=p_table_name
+    order by c.column_name;
+    l_sql := 'DECLARE python varchar2(32000) := ''' || upper(p_table_name) || '={'' || chr(10); ' ||
+             'k varchar2(32000); v varchar2(32000); ' ||
+             'BEGIN FOR r IN (SELECT * FROM '||p_table_name|| ') LOOP ';
+
+    l_sql := l_sql || ' k := ''''; ';
+    l_sql := l_sql || ' v := ''''; ';
+    -- construir la key del dict
+    FOR i IN 1 .. pk_fields.COUNT loop
+        l_sql := l_sql || ' k := k || r.' || pk_fields(i) || '; ';
+    end loop;
+    -- construir el value del dict
+    FOR i IN 1 .. all_fields.COUNT loop
+        l_sql := l_sql || ' v := v || ''"' || lower(all_fields(i)) || '": "'' || r.' || all_fields(i) || ' || ''", '';';
+    end loop;
+    --TODO
+    l_sql := l_sql || 'python := python|| chr(9) || ''"'' || k || ''": { '' || v || ''}, '' || chr(10); ';
+
+    l_sql := l_sql || '   END LOOP; '
+             || 'python := python || chr(10) || '' }'';'
+             || ' dbms_output.put_line(python); ' ||
+             ' END; ';
+    EXECUTE IMMEDIATE l_sql;
+END;
+```
+
+Una vez se ejecuta el PL (en un entorno que tenga datos) así:
+
+```
+begin
+    export_data_to_python('THING_TYPE');
+end;
+```
+
+Obtenemos en la salida de `DBMS_OUTPUT` el código Python:
+
+```
+    THING_TYPE = {
+        'CAR': {'thing_type_code': 'CAR', 'name': 'Car'},
+        'HOU': {'thing_type_code': 'HOU', 'name': 'House'},
+    }
+```
+Este código puede pegarse directamente en la clase `MasterTables`, y puede usarse en la función correspondiente para obtener los datos, usando la caché que hemos comentado.
 
 # 4. Ejecución de pruebas automáticas
 
