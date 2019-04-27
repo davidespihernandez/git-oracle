@@ -8,9 +8,16 @@ class BaseDataBuilder:
     def clear(self):
         raise NotImplemented
 
-    def call_pl(self, package_and_method, parameters):
+    def call_pl(self, package_and_method, params=None, kparams=None, return_type=None):
+        if params is None:
+            params = []
+        if kparams is None:
+            kparams = {}
         cursor = connection.cursor()
-        ret = cursor.callproc(package_and_method, parameters)
+        if return_type:
+            ret = cursor.callfunc(package_and_method, return_type, parameters=params, keywordParameters=kparams)
+        else:
+            ret = cursor.callproc(package_and_method, params=params, kparams=kparams)
         cursor.close()
         return ret
 

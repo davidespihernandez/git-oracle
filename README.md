@@ -684,6 +684,30 @@ Obtenemos en la salida de `DBMS_OUTPUT` el código Python:
 ```
 Este código puede pegarse directamente en la clase `MasterTables`, y puede usarse en la función correspondiente para obtener los datos, usando la caché que hemos comentado.
 
+### 3.4.5 Llamar a procedimientos almacenados PL/SQL desde Django
+El cliente cx-Oracle permite la ejecución de procedimientos almacenados PL/SQL (procedimientos y funciones).
+Un buen tutorial puede encontrarse [aquí](https://dzone.com/articles/execute-plsql-calls-with-python-and-cx-oracle)
+
+Para facilitar las llamadas a PL, he creado un wrapper en la clase BaseDataBuilder que permite realizar llamadas a procedimientos y funciones PL/SQL.
+
+Algunos ejemplos de llamada son:
+
+```
+    builder = TestDataBuilder()
+    # llamada a un procedimiento sin named arguments 
+    builder.call_pl('pl1.procedure1', params=["parametro 1"])
+    # llamada a un procedimiento con named arguments
+    builder.call_pl('pl1.procedure1', kparams={"param1": "parametro 1"})
+    # llamada a una función sin named arguments 
+    response = builder.call_pl('pl1.funcion1', params=["parametro 1"], return_type=str)
+    # llamada a una función con named arguments 
+    response = builder.call_pl('pl1.funcion1', kparams={"param1": "parametro 1"}, return_type=str)
+```
+
+Si el método `call_pl` recibe un parámetro `return_type` entenderá que debe llamar a una función. En caso contrario se llamará a un procedimiento.
+
+En las llamadas pueden mezclarse argumentos posicionales y con nombre al mismo tiempo.
+
 # 4. Ejecución de pruebas automáticas
 
 TODO

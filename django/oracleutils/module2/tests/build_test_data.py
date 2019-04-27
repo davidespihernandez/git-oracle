@@ -52,8 +52,15 @@ class TestDataBuilder(BaseDataBuilder):
 def build_test_data(clear=True):
     builder = TestDataBuilder()
     print("Calling PL")
-    response = builder.call_pl('pl1.procedure1', ('parametro1', ))
-    print(f"Respuesta {response}")
+    response = builder.call_pl('pl1.procedure1', params=["parametro 1"])
+    print(f"Respuesta1 {response}")
+    response = builder.call_pl('pl1.procedure1', kparams={"param1": "parametro 1"})
+    print(f"Respuesta2 {response}")
+    response = builder.call_pl('pl1.funcion1', params=["parametro 1"], return_type=str)
+    print(f"Respuesta3 {response}")
+    response = builder.call_pl('pl1.funcion1', kparams={"param1": "parametro 1"}, return_type=str)
+    print(f"Respuesta4 {response}")
+
     if clear:
         builder.clear()
     builder.build()
