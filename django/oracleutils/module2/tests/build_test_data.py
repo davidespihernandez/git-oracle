@@ -21,6 +21,7 @@ class TestDataBuilder(BaseDataBuilder):
         log.info("Building test data for module 2")
         self.build_people()
         self.build_things()
+        self.build_bunch_of_houses_using_pl()
 
     def build_people(self):
         log.info("Building people")
@@ -38,6 +39,18 @@ class TestDataBuilder(BaseDataBuilder):
         self.builder.car(person=self.person_both, detail='Car Make')
         log.info("Building things 3")
         self.builder.house(person=self.person_both, detail='House address')
+
+    def build_bunch_of_houses_using_pl(self):
+        log.info("Creating a bunch of houses using PL")
+        total = 10
+        for i in range(total):
+            thing_id = self.call_pl('pl1.create_example_house',
+                         kparams={
+                             'person_name_p': 'muchas casas',
+                             'detail': f'house {i}',
+                         },
+                         return_type=int)
+            log.info(f"Created house {thing_id}")
 
     @transaction.atomic()
     def clear(self):

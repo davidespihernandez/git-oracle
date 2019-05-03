@@ -708,6 +708,31 @@ Si el método `call_pl` recibe un parámetro `return_type` entenderá que debe l
 
 En las llamadas pueden mezclarse argumentos posicionales y con nombre al mismo tiempo.
 
+Como ejemplo, se ha creado un PL que inserta filas en la tabla HOUSE, y un procedimiento que llama ese PL en la generación de datos de prueba, para generar 10 filas para la misma persona. En mi opinión siempre es más conveniente usar Django (factories y builders) para generar datos de test, pero a veces ya se dispone de PL que funcionan y realizan tareas que pueden reutilizarse tanto para pruebas como para generación de datos de prueba.
+
+El método que llama al PL, en un bucle, es bastante fácil de leer:
+
+```
+    def build_bunch_of_houses_using_pl(self):
+        log.info("Creating a bunch of houses using PL")
+        total = 10
+        for i in range(total):
+            thing_id = self.call_pl('pl1.create_example_house',
+                         kparams={
+                             'person_name_p': 'muchas casas',
+                             'detail': f'house {i}',
+                         },
+                         return_type=int)
+            log.info(f"Created house {thing_id}")
+
+```
+En este caso estamos haciendo una llamada con parámetros con nombre, lo que facilita la posterior lectura del código. 
+El PL (declaración) es:
+
+```
+    function create_example_house(person_name_p varchar2, detail varchar2) return number;
+```
+
 # 4. Ejecución de pruebas automáticas
 
 TODO
