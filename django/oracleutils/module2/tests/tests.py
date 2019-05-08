@@ -1,16 +1,13 @@
 from datetime import datetime
 
-from django.test import TestCase
-
-from module2.tests.build_test_data import TestDataBuilder
+from module2.tests import Module2TestCase
 
 
-class BaseTestCase(TestCase):
+class DummyTestCase(Module2TestCase):
     def test_dummy(self):
         self.assertEqual(1, 1)
 
     def test_call_pl(self):
-        builder = TestDataBuilder()
         today = datetime.today()
         today_str = today.strftime('%d/%m/%Y')
         calls = [
@@ -37,7 +34,7 @@ class BaseTestCase(TestCase):
         ]
         for call in calls:
             with self.subTest(call['name']):
-                result = builder.call_pl(
+                result = self.helper.call_pl(
                     package_and_method='pl1.different_types_args',
                     kparams=call['arguments'],
                     return_type=str,
@@ -46,3 +43,38 @@ class BaseTestCase(TestCase):
                     result,
                     call['expected'],
                 )
+
+
+class CountThingsTestCase(Module2TestCase):
+    def setUp(self):
+        self.person = self.builder.person()
+
+    # No es necesario un tearDown, porque cada test es una transacción de la
+    # que se hace rollback, pero aquí va un ejemplo
+
+    # def tearDown(self):
+    #     self.person.thing_set.all().delete()
+    #     self.person.delete()
+
+    def perform_call(self):
+        return self.helper.call_pl(
+            package_and_method='pl1.count_person_things',
+            params=[self.person.person_id],
+            return_type=int,
+        )
+
+    def test_person_with_things(self):
+        things_number = 3
+        for i in range(things_number):
+            self.builder.thing(person=self.person)
+
+        self.assertEqual(
+            self.perform_call(),
+            things_number,
+        )
+
+    def test_person_without_things(self):
+        self.assertEqual(
+            self.perform_call(),
+            0,
+        )

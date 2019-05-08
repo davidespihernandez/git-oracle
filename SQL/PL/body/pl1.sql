@@ -42,4 +42,12 @@ create or replace package body pl1 is
                   to_char(date_p, 'dd/mm/yyyy');
         return result;
     end different_types_args;
+    function count_person_things(person_id_p number) return number is
+        things number := 0;
+    begin
+        select count(*) into things
+        from THING
+        where PERSON_ID=person_id_p;
+        return things;
+    end count_person_things;
 end pl1;
