@@ -2,3 +2,4 @@ SQL/tmp.sql
 .idea
 .DS_Store
 *.pyc
+.vscode/settings.json

@@ -735,4 +735,78 @@ El PL (declaración) es:
 
 # 4. Ejecución de pruebas automáticas
 
-TODO
+## 4.1 Test runner específico
+Django está diseñado para realizar pruebas automáticas, de forma que cada vez que se ejecutan los tests, Django crea una base de datos vacía y aplica las database migrations para crear las tablas.
+
+Cada test que Django ejecuta (basado en el Django TestCase) es una transacción, por lo que todos los datos que se crean o modifican se eliminan después del test.
+
+En nuestro caso, como las tablas que vamos a usar se crean en la base de datos usando Flyway, Django no dispone de los scripts de migración para crear la base de datos de test, por lo que no podemos usar el proceso "normal" de ejecución de tests de Django.
+
+Sin embargo, sí podemos aprovecharnos de la transaccionalidad de los TestCase de Django, creando un `TestRunner` específico:
+
+```
+class NoDbTestRunner(DiscoverRunner):
+    """ A test runner to test without database creation/deletion """
+
+    def setup_databases(self, **kwargs):
+        pass
+
+    def teardown_databases(self, old_config, **kwargs):
+        pass
+
+```
+
+Este test runner tiene que especificarse cuando se ejecuten los tests, como se indica en el siguiente comando:
+
+```
+python3 manage.py test module2 --testrunner=oracleutils.NoDbTestRunner
+```
+
+Ese comando ejecutaría los tests para el module2, usando nuestro test runner, que no crea ni elimina ninguna base de datos, sino que usa la base de datos por defecto. Esto hay que tenerlo en cuenta a la hora de programar los tests, porque las tablas que usemos pueden tener datos, que podrían afectar a nuestros tests.
+
+## 4.2 Ejemplos de tests automáticos
+Hemos creado una clase base de tests para cada módulo, que proporciona acceso al Builder y al TestBuilder de cada módulo, como variables `builder` y `helper`.
+
+La siguiente clase es un ejemplo de test de una función en un PL. La función es un simple `count` de la tabla `thing` para una persona.
+
+```
+class CountThingsTestCase(Module2TestCase):
+    def setUp(self):
+        self.person = self.builder.person()
+
+    # No es necesario un tearDown, porque cada test es una transacción de la
+    # que se hace rollback, pero aquí va un ejemplo
+
+    # def tearDown(self):
+    #     self.person.thing_set.all().delete()
+    #     self.person.delete()
+
+    def perform_call(self):
+        return self.helper.call_pl(
+            package_and_method='pl1.count_person_things',
+            params=[self.person.person_id],
+            return_type=int,
+        )
+
+    def test_person_with_things(self):
+        things_number = 3
+        for i in range(things_number):
+            self.builder.thing(person=self.person)
+
+        self.assertEqual(
+            self.perform_call(),
+            things_number,
+        )
+
+    def test_person_without_things(self):
+        self.assertEqual(
+            self.perform_call(),
+            0,
+        )
+
+```
+Lo interesante de este test es que en el método `setUp`, que se ejecuta antes de cada test, se crea una persona (usando el builder del módulo), que se almacena en el objeto de test, y se elimina al hacer rollback después del test, porque la clase `Module2TestCase` hereda de Django `TestCase`, que realiza una transacción por cada test.
+
+Nótese que las llamadas a PL se realizan mediante el `helper`, que es el `TestDataBuilder` del módulo.
+
+Al ser un `TestCase` también podemos usar los métodos `assert*` para realizar las comprobaciones en los tests.
