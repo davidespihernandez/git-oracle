@@ -265,6 +265,40 @@ El script compila cada cabecera y body por separado en `sqlplus`.
 En caso de tener triggers o clases, o cualquier otro código PL que compilar, puede añadirse en este mismo script.
 Al final se ejecuta un par de veces el paquete `UTL_RECOMP` para recompilar los paquetes con errores.
 
+La salida del script cuando no hay errores de compilacion es algo como:
+
+```
+Davids-MacBook-Pro:shell_scripts davidespihernandez$ ./compilar.sh 
+Compilando cabeceras
+   pl1.sql
+   pl2.sql
+Compilando bodies
+   pl1.sql
+   pl2.sql
+Recompilando todo
+Todo compilado sin errores!
+```
+
+Cuando algún objeto está descompilado después de compilar todo, el script muestra una lista de los objetos inválidos, como:
+
+```
+Davids-MacBook-Pro:shell_scripts davidespihernandez$ ./compilar.sh 
+Compilando cabeceras
+   pl1.sql
+   pl2.sql
+Compilando bodies
+   pl1.sql
+   pl2.sql
+Recompilando todo
+Hay errores de compilación!
+
+OBJECT_TYPE     OBJECT_NAME                                                     
+--------------- ----------------------------------------------------------------
+PACKAGE BODY    PL1                                                             
+```
+
+Es responsabilidad del desarrollador abrir el paquete en el IDE correspondiente para localizar el error de compilación y resolverlo.
+
 En todo caso, hay clientes SQL como TOAD que permiten la compilación masiva de los ficheros PL/SQL, por lo que esto puede hacerse manualmente, pero un script siempre simplifica las cosas. 
 
 ## 2.2 Uso de Git
