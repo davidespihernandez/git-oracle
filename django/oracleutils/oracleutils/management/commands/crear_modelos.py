@@ -13,11 +13,14 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         for app, tables in ALL_TABLES.items():
-            for table in tables:
-                with open(f'{app}/models/{table.lower()}.py', 'w') as f:
-                    with redirect_stdout(f):
-                        InspectDbCommand().execute(
-                            table=[table],
-                            database='default',
-                            no_color=True,
-                        )
+            with open(f'{app}/models/__init__.py', 'w') as init_file:
+                for table in tables:
+                    table_name = table.lower()
+                    with open(f'{app}/models/{table_name}.py', 'w') as f:
+                        with redirect_stdout(f):
+                            InspectDbCommand().execute(
+                                table=[table],
+                                database='default',
+                                no_color=True,
+                            )
+                    init_file.write(f'from .{table_name} import *\n')
