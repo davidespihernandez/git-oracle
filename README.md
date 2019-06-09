@@ -251,6 +251,48 @@ En ese caso Flyway, por defecto, da un error, que se puede evitar ejecutando `fl
 
 He creado un script sh que ejecuta `flyway migrate`, que se llama `bd_migrar.sh`. 
 
+### 1.2.8 Uso de expdp e impdp
+Si la base de datos existente que tenemos que utilizar tiene muchas tablas (miles...), es difícil tener un script SQL que usar con Flyway como script de creación de la base de datos. Oracle no ofrece una forma sencilla para exportar la estructura de una base de datos en formato SQL que pueda ser aplicado por Flyway como un script de migración, y para poder hacer esto hay que recurrir a productos de terceros que no son gratuitos.
+
+Sin embargo, sí hay una forma de exportar e importar la estructura de la base de datos usando una herramienta gratuita de Oracle, los comandos `expdp` y `impdp`.
+
+#### 1.2.8.1 Exportar estructura de la base de datos original
+El comando `expdp` permite exportar la estructura de la base de datos original, especificando los esquemas que quieren exportarse (puede ser necesario exportar más de uno).
+
+Por ejemplo:
+
+`expdp C##LOCAL/localpass schemas=C##LOCAL content=metadata_only dumpfile=export.dmp reuse_dumpfiles=YES`
+
+Este comando exporta el esquema `C##LOCAL`, pero únicamente la estructura de tablas del mismo. Puede especificarse varios esquemas separados por comas. El comando crea (o sobreescribe) un fichero `export.dmp` en el directorio de export de Oracle en la máquina donde esté corriendo la instancia.
+
+#### 1.2.8.2 Importar fichero dmp
+
+Para importar un fichero dmp se puede ejecutar el comando:
+
+`impdp C##LOCAL/localpass schemas=C##LOCAL dumpfile=export.dmp`
+
+Para que el comando funcione, el fichero `export.dmp` debe existir en un directorio accesible por la base de datos. Por defecto el directorio de export/import es `/u01/app/oracle/admin/ORCL/dpdump/`. La base de datos destino debería estar vacía para evitar problemas (puede conseguirse eso ejecutando `flyway clean`).
+
+Este comando importará la estructura de base de datos, que puede incluir procedimientos almacenados, triggers, y varios esquemas diferentes.
+
+#### 1.2.8.3 Integración entre export/import y Flyway
+
+Cuando estamos trabajando con bases de datos heredadas que contienen muchas tablas (miles), la mejor opción para el desarrollo local es partir de un fichero `dmp` (que contenga sólo la estructura de las tablas) exportado desde la base de datos original, y usar Flyway para aplicar los scripts de migración sobre esa base de datos.
+
+El proceso para trabajar así podría ser, para cada `sprint` o ciclo, al inicio del sprint, una vez se ha hecho el deployment a producción:
+
+1. Una vez ejecutados los scripts de migración, se hace una export del entorno de producción que contenga únicamente la estructura de las tablas, para los esquemas que nos interesen.
+2. Esa export se guarda en un directorio en Git (en nuestro caso, en SQL/export), y se sube a Git.
+3. Todos los scripts ejecutados en producción usando Flyway se mueven a un directorio de scripts ejecutados, en un subdirectorio con la fecha del sprint. El directorio de de migrations queda vacío. Las nuevas migraciones estarán en ese directorio una vez se vayan mergeando las ramas correspondientes.
+4. Se ejecuta `flyway baseline` en producción, para resetear las migraciones.
+5. Cada desarrollador, cuando se ha hecho un deployment a producción, refresca su repositorio de Git y recrea la base de datos importando la export y posteriormente aplicando los scripts de Flyway que sean necesarios, dependiendo de la rama en la que se encuentre.
+
+En resumen, para recrear todo localmente se debe ejecutar una import del fichero `export.dmp` que haya en el directorio `SQL/export` y posteriormente ejecutar `flyway baseline` y `flyway migrate` localmente, para inicializar las migraciones de Flyway y aplicar los scripts existentes.
+
+Esta solución, además de sincronizar el modelo de base de datos, permite mantener un directorio de migraciones de Flyway reducido, sin cientos de ficheros SQL que van creciendo sin control. Como contraprestación, se requiere ser muy disciplinado a la hora de desarrollar, porque no seguir los pasos llevaría a resultados erróneos (al menos localmente). Se puede crear una serie de scripts `sh` or `bat` que hagan la vida más sencilla a los desarrolladores.
+
+Hemos creado un script `import_db.sh` que utiliza el fichero `export.dmp` en el directorio `SQL/export` para realizar una import de la base de datos. Si ese fichero se actualiza después de cada deployment a producción los desarrolladores pueden tener la base de datos actualizada fácilmente.
+
 # 2. Uso diario
 
 ## 2.1 Compilación del código
