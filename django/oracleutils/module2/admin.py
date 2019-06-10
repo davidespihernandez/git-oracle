@@ -41,6 +41,8 @@ class ThingAdminInline(admin.TabularInline):
 
 class CarAdminInline(admin.StackedInline):
     model = Car
+    verbose_name = 'Coche'
+    verbose_name_plural = 'Campos coche'
     fields = ('detail', )
     show_change_link = True
     extra = 1
@@ -49,6 +51,8 @@ class CarAdminInline(admin.StackedInline):
 
 class HouseAdminInline(admin.StackedInline):
     model = House
+    verbose_name = 'Casa'
+    verbose_name_plural = 'Campos casa'
     fields = ('detail', )
     show_change_link = True
     extra = 1
