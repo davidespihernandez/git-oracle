@@ -37,6 +37,7 @@ class ThingAdminInline(admin.TabularInline):
     model = Thing
     fields = ('thing_id', 'date_created', 'person', 'thing_type_code', )
     show_change_link = True
+    extra = 0
 
 
 class CarAdminInline(admin.StackedInline):

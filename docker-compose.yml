@@ -3,6 +3,8 @@ services:
   oracle-local:
     container_name: oracle-local
     image: store/oracle/database-enterprise:12.2.0.1
+    environment:
+      - ORACLE_CHARACTERSET=WE8ISO8859P1
     ports:
       - "32769:1521"
     volumes:
